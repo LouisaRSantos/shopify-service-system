@@ -9,9 +9,13 @@
             </a>
         </li>
 
+        <li class="nav-item nav-category">
+            Bounty Family
+        </li>
+
         <li class="nav-item">
             <a class="nav-link ajax-link" href="/customers/create">
-                <i class="icon-user menu-icon"></i>
+                <i class="icon-square-plus menu-icon"></i>
                 <span class="menu-title">Add Customer</span>
             </a>
         </li>
@@ -27,6 +31,17 @@
             <a class="nav-link ajax-link" href="/customers/export">
                 <i class="icon-cloud-download menu-icon"></i>
                 <span class="menu-title">Export Customers</span>
+            </a>
+        </li>
+
+        <li class="nav-item nav-category">
+            Bounty Fresh Market
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link ajax-link" href="/">
+                <i class="icon-clock menu-icon"></i>
+                <span class="menu-title">Marketing Scheduler</span>
             </a>
         </li>
 

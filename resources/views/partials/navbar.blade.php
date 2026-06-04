@@ -39,7 +39,7 @@
 
         <ul class="navbar-nav navbar-nav-right">
 
-            <li class="nav-item dropdown">
+            <!-- <li class="nav-item dropdown">
 
                 <a class="nav-link count-indicator dropdown-toggle"
                    id="notificationDropdown"
@@ -75,7 +75,7 @@
                     </a>
 
                 </div>
-            </li>
+            </li> -->
 
             <li class="nav-item nav-profile dropdown">
 
@@ -83,16 +83,16 @@
                    href="#"
                    data-bs-toggle="dropdown">
 
-                    <img src="{{ asset('assets/images/faces/face28.jpg') }}"
+                    <img src="{{ asset('assets/images/faces/circle-user.png') }}"
                          alt="profile" />
                 </a>
 
                 <div class="dropdown-menu dropdown-menu-right navbar-dropdown">
 
-                    <a class="dropdown-item">
+                    <!-- <a class="dropdown-item">
                         <i class="ti-settings text-primary"></i>
                         Settings
-                    </a>
+                    </a> -->
 
                     <a class="dropdown-item" href="{{ route('logout') }}">
                         <i class="ti-power-off text-primary"></i> Logout
