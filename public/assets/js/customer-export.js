@@ -1,21 +1,26 @@
 function initializeCustomerExport() {
-    const exportType = document.getElementById('exportType');
-    const exportBtn = document.getElementById('exportBtn');
-    const exportResult = document.getElementById('exportResult');
 
-    if (!exportType || !exportBtn || !exportResult) {
+    const $exportType = $('#exportType');
+    const $exportBtn = $('#exportBtn');
+    const $exportResult = $('#exportResult');
+
+    if (
+        !$exportType.length ||
+        !$exportBtn.length ||
+        !$exportResult.length
+    ) {
         return;
     }
 
-    if (exportBtn.dataset.exportInitialized === 'true') {
+    if ($exportBtn.data('exportInitialized') === true) {
         return;
     }
 
-    exportBtn.dataset.exportInitialized = 'true';
+    $exportBtn.data('exportInitialized', true);
 
-    const emailField = document.getElementById('emailField');
-    const idsField = document.getElementById('idsField');
-    const stateField = document.getElementById('stateField');
+    const $emailField = $('#emailField');
+    const $idsField = $('#idsField');
+    const $stateField = $('#stateField');
 
     let pollInterval = null;
     let isPolling = false;
@@ -29,115 +34,116 @@ function initializeCustomerExport() {
 
     window.__customerExportCleanup = clearPolling;
 
-    exportType.addEventListener('change', function () {
-        emailField?.classList.add('d-none');
-        idsField?.classList.add('d-none');
-        stateField?.classList.add('d-none');
+    $exportType.on('change', function () {
+        $emailField.addClass('d-none');
+        $idsField.addClass('d-none');
+        $stateField.addClass('d-none');
 
-        if (this.value === 'email') {
-            emailField?.classList.remove('d-none');
+        if ($(this).val() === 'email') {
+            $emailField.removeClass('d-none');
         }
 
-        if (this.value === 'ids') {
-            idsField?.classList.remove('d-none');
+        if ($(this).val() === 'ids') {
+            $idsField.removeClass('d-none');
         }
 
-        if (this.value === 'state') {
-            stateField?.classList.remove('d-none');
+        if ($(this).val() === 'state') {
+            $stateField.removeClass('d-none');
         }
     });
 
-    async function pollStatus() {
+    function pollStatus() {
         if (isPolling) {
             return;
         }
-
         isPolling = true;
+        $.ajax({
+            url: '/customers/export/status',
+            type: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            success: function (data) {
+                console.log('EXPORT STATUS:', data);
+                if (data.status === 'COMPLETED') {
+                    clearPolling();
+                    $exportBtn.prop('disabled', false);
+                    $exportResult.html(`
+                        <div class="alert alert-success">
+                            Export ready!
+                            <a href="${data.download}" class="btn btn-sm btn-primary mt-2">
+                                Download Excel
+                            </a>
+                        </div>
+                    `);
+                    return;
+                }
 
-        try {
-            const res = await fetch('/customers/export/status', {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                },
-                credentials: 'same-origin',
-            });
+                if (
+                    data.status === 'FAILED' ||
+                    data.status === 'CANCELED'
+                ) {
+                    clearPolling();
+                    $exportBtn.prop('disabled', false);
+                    $exportResult.html(`
+                        <div class="alert alert-danger">
+                            Export failed or canceled.
+                        </div>
+                    `);
+                    return;
+                }
+            },
 
-            if (!res.ok) {
-                throw new Error('Status request failed');
+            error: function (xhr, status, error) {
+                console.error(error);
+            },
+
+            complete: function () {
+                isPolling = false;
             }
-
-            const data = await res.json();
-
-            console.log('EXPORT STATUS:', data);
-
-            if (data.status === 'COMPLETED') {
-                clearPolling();
-                exportBtn.disabled = false;
-                exportResult.innerHTML = `
-                    <div class="alert alert-success">
-                        Export ready!
-                        <a href="${data.download}" class="btn btn-sm btn-primary mt-2">
-                            Download Excel
-                        </a>
-                    </div>`;
-                return;
-            }
-
-            if (data.status === 'FAILED' || data.status === 'CANCELED') {
-                clearPolling();
-                exportBtn.disabled = false;
-                exportResult.innerHTML = `
-                    <div class="alert alert-danger">
-                        Export failed or canceled.
-                    </div>`;
-                return;
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            isPolling = false;
-        }
+        });
     }
 
     function startPolling() {
         if (pollInterval) {
             return;
         }
-
         pollInterval = setInterval(pollStatus, 3000);
         pollStatus();
     }
 
-    exportBtn.addEventListener('click', async function (event) {
+    $exportBtn.on('click', function (event) {
         event.preventDefault();
-
-        if (exportBtn.disabled) {
+        if ($exportBtn.prop('disabled')) {
             return;
         }
-
-        const type = exportType.value;
-        const columns = Array.from(document.querySelectorAll('.export-column:checked')).map(el => el.value);
+        const type = $exportType.val();
+        const columns = $('.export-column:checked')
+            .map(function () {
+                return $(this).val();
+            })
+            .get();
 
         let payload = {
             type: type,
-            columns: columns,
+            columns: columns
         };
 
         if (type === 'email') {
-            const email = document.getElementById('exportEmail').value.trim();
-
+            const email = $.trim($('#exportEmail').val());
             if (!email) {
-                document.getElementById('exportResult').innerHTML =
-                    `<div class="alert alert-danger">Email is required</div>`;
+                $exportResult.html(
+                    `<div class="alert alert-danger">Email is required</div>`
+                );
                 return;
             }
-
             payload.email = email;
         }
 
         if (type === 'ids') {
-            payload.ids = document.getElementById('exportIds').value
+            payload.ids = $('#exportIds')
+                .val()
                 .split(',')
                 .map(id => id.trim())
                 .filter(Boolean)
@@ -145,47 +151,53 @@ function initializeCustomerExport() {
         }
 
         if (type === 'state') {
-            payload.state = document.getElementById('exportState')?.value || '';
+            payload.state = $('#exportState').val() || '';
         }
 
-        exportBtn.disabled = true;
-        exportResult.innerHTML = `<div class="alert alert-info">Starting export...</div>`;
+        $exportBtn.prop('disabled', true);
+        $exportResult.html(
+            `<div class="alert alert-info">Starting export...</div>`
+        );
 
-        try {
-            const res = await fetch('/customers/export/start', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify(payload),
-            });
-
-            const data = await res.json();
-
-            if (data.status !== 'success') {
+        $.ajax({
+            url: '/customers/export/start',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: {
+                'X-CSRF-TOKEN':
+                    $('meta[name="csrf-token"]').attr('content') || '',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            data: JSON.stringify(payload),
+            success: function (data) {
+                if (data.status !== 'success') {
+                    clearPolling();
+                    $exportBtn.prop('disabled', false);
+                    $exportResult.html(`
+                        <div class="alert alert-danger">
+                            ${data.message || 'Export failed to start.'}
+                        </div>
+                    `);
+                    return;
+                }
+                startPolling();
+            },
+            error: function () {
                 clearPolling();
-                exportBtn.disabled = false;
-                exportResult.innerHTML = `<div class="alert alert-danger">${data.message || 'Export failed to start.'}</div>`;
-                return;
+                $exportBtn.prop('disabled', false);
+                $exportResult.html(`
+                    <div class="alert alert-danger">
+                        Network error starting export.
+                    </div>
+                `);
             }
-
-            startPolling();
-        } catch (error) {
-            console.error(error);
-            clearPolling();
-            exportBtn.disabled = false;
-            exportResult.innerHTML = `<div class="alert alert-danger">Network error starting export.</div>`;
-        }
+        });
     });
-
-    window.addEventListener('beforeunload', clearPolling);
+    $(window).on('beforeunload', clearPolling);
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    if (document.getElementById('exportType')) {
+$(function () {
+    if ($('#exportType').length) {
         initializeCustomerExport();
     }
 });

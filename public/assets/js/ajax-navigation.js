@@ -1,4 +1,5 @@
 (function () {
+
     const contentSelector = '#ajax-content';
     const linkSelector = 'a.ajax-link';
 
@@ -8,17 +9,23 @@
     }
 
     function updateActiveNavigation(url) {
-        document.querySelectorAll(linkSelector).forEach(link => {
-            link.classList.toggle('active', link.href === url);
+        $(linkSelector).each(function () {
+            $(this).toggleClass('active', this.href === url);
         });
     }
 
     function findContentElement(doc) {
-        return doc.querySelector(contentSelector) || doc.querySelector('.main-panel') || doc.querySelector('.content-wrapper');
+        return $(doc).find(contentSelector).first().length
+            ? $(doc).find(contentSelector).first()
+            : $(doc).find('.main-panel').first().length
+                ? $(doc).find('.main-panel').first()
+                : $(doc).find('.content-wrapper').first();
     }
 
     function getCurrentContentElement() {
-        return document.querySelector(contentSelector) || document.querySelector('.main-panel');
+        return $(contentSelector).length
+            ? $(contentSelector)
+            : $('.main-panel').first();
     }
 
     function cleanupPageScripts() {
@@ -28,97 +35,112 @@
     }
 
     function executeInlineScripts(root) {
-        root.querySelectorAll('script').forEach(oldScript => {
+        $(root).find('script').each(function () {
+            const $oldScript = $(this);
             const script = document.createElement('script');
-            if (oldScript.src) {
-                script.src = oldScript.src;
+            if ($oldScript.attr('src')) {
+                script.src = $oldScript.attr('src');
             } else {
-                script.textContent = oldScript.textContent;
+                script.text = $oldScript.html();
             }
-            if (oldScript.type) {
-                script.type = oldScript.type;
+
+            if ($oldScript.attr('type')) {
+                script.type = $oldScript.attr('type');
             }
-            document.body.appendChild(script).parentNode.removeChild(script);
+
+            document.body.appendChild(script);
+            document.body.removeChild(script);
         });
     }
 
     function loadPage(url, pushState = false) {
-        const contentElement = getCurrentContentElement();
-        if (!contentElement) {
+        const $contentElement = getCurrentContentElement();
+        if (!$contentElement.length) {
             window.location.href = url;
             return;
         }
-
         cleanupPageScripts();
 
-        fetch(url, {
+        $.ajax({
+            url: url,
+            type: 'GET',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'text/html',
+                'Accept': 'text/html'
             },
-            credentials: 'same-origin',
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Failed to load page: ${response.status}`);
-                }
-                return response.text();
-            })
-            .then(html => {
+            success: function (html) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
-                const nextContent = findContentElement(doc);
-
-                if (!nextContent) {
+                const $nextContent = findContentElement(doc);
+                if (!$nextContent.length) {
                     throw new Error('AJAX content container not found in response.');
                 }
 
-                contentElement.innerHTML = nextContent.innerHTML;
-                executeInlineScripts(nextContent);
+                $contentElement.html($nextContent.html());
+                executeInlineScripts($nextContent);
+                const hasExport =
+                    $nextContent.find('#exportType').length ||
+                    $nextContent.find('#exportBtn').length;
 
-                const hasExport = nextContent.querySelector('#exportType') || nextContent.querySelector('#exportBtn');
-                if (typeof initializeCustomerExport === 'function' && hasExport) {
+                if (
+                    typeof initializeCustomerExport === 'function' &&
+                    hasExport
+                ) {
                     initializeCustomerExport();
                 }
 
-                document.title = doc.querySelector('title')?.textContent || document.title;
-                updateActiveNavigation(window.location.origin + url);
+                const pageTitle = $(doc).find('title').text();
 
+                if (pageTitle) {
+                    document.title = pageTitle;
+                }
+                updateActiveNavigation(window.location.origin + url);
                 if (pushState) {
                     window.history.pushState({ url }, '', url);
                 }
-            })
-            .catch(() => {
+            },
+            error: function () {
                 window.location.href = url;
-            });
+            }
+        });
     }
 
-    window.addEventListener('popstate', event => {
-        const url = (event.state && event.state.url) || window.location.pathname;
+    $(window).on('popstate', function (event) {
+        const url =
+            (event.originalEvent.state &&
+                event.originalEvent.state.url)
+            || window.location.pathname;
         loadPage(url, false);
     });
 
-    window.addEventListener('DOMContentLoaded', () => {
-        document.body.addEventListener('click', event => {
-            const link = event.target.closest(linkSelector);
-            if (!link) {
+    $(function () {
+        $(document).on('click', linkSelector, function (event) {
+            if (
+                event.isDefaultPrevented() ||
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+            ) {
                 return;
             }
-
-            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            const targetUrl = $(this).attr('href');
+            if (
+                !targetUrl ||
+                targetUrl.startsWith('#') ||
+                !isSameOrigin(targetUrl)
+            ) {
                 return;
             }
-
-            const targetUrl = link.getAttribute('href');
-            if (!targetUrl || targetUrl.startsWith('#') || !isSameOrigin(targetUrl)) {
-                return;
-            }
-
             event.preventDefault();
             loadPage(targetUrl, true);
         });
-
-        window.history.replaceState({ url: window.location.pathname }, '', window.location.pathname);
+        window.history.replaceState(
+            { url: window.location.pathname },
+            '',
+            window.location.pathname
+        );
         updateActiveNavigation(window.location.href);
     });
 })();
