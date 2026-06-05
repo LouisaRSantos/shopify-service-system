@@ -295,13 +295,13 @@ class CustomerExportController extends Controller
     {
         $file = $request->file;
 
-        $path = storage_path("app/" . $file);
+        $path = storage_path("app/exports/" . $file);
 
         if (!file_exists($path)) {
             abort(404);
         }
 
-        return response()->download($path)->deleteFileAfterSend(true);
+        return response()->download($path);
     }
 
     private function generateExcel($customers)
@@ -385,7 +385,7 @@ class CustomerExportController extends Controller
         }
 
         $fileName = "customers_export_" . time() . ".xlsx";
-        $path = storage_path("app/" . $fileName);
+        $path = storage_path("app/exports/" . $fileName);
 
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save($path);
