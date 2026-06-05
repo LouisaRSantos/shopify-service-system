@@ -2,11 +2,11 @@
 
     <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-start">
         <a class="navbar-brand brand-logo me-5 ajax-link" href="/">
-            <img src="{{ asset('assets/images/logo.svg') }}" class="me-2" alt="logo" />
+            <img src="{{ asset('assets/images/logo/bounty-services-logo-1.png') }}" class="me-2" alt="logo" />
         </a>
 
         <a class="navbar-brand brand-logo-mini ajax-link" href="/">
-            <img src="{{ asset('assets/images/logo-mini.svg') }}" alt="logo" />
+            <img src="{{ asset('assets/images/logo/bounty-services-logo-circle.png') }}" alt="logo" />
         </a>
     </div>
 
@@ -18,7 +18,7 @@
             <span class="icon-menu"></span>
         </button>
 
-        <ul class="navbar-nav mr-lg-2">
+        <!-- <ul class="navbar-nav mr-lg-2">
             <li class="nav-item nav-search d-none d-lg-block">
                 <div class="input-group">
 
@@ -35,7 +35,7 @@
 
                 </div>
             </li>
-        </ul>
+        </ul> -->
 
         <ul class="navbar-nav navbar-nav-right">
 
@@ -101,11 +101,11 @@
                 </div>
             </li>
 
-            <li class="nav-item nav-settings d-none d-lg-flex">
+            <!-- <li class="nav-item nav-settings d-none d-lg-flex">
                 <a class="nav-link" href="#">
                     <i class="icon-ellipsis"></i>
                 </a>
-            </li>
+            </li> -->
 
         </ul>
 

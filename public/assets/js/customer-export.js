@@ -3,11 +3,15 @@ function initializeCustomerExport() {
     const $exportType = $('#exportType');
     const $exportBtn = $('#exportBtn');
     const $exportResult = $('#exportResult');
+    const $toggleColumnsBtn = $('#toggleColumnsBtn');
+    const $columnCheckboxes = $('.export-column');
 
     if (
         !$exportType.length ||
         !$exportBtn.length ||
-        !$exportResult.length
+        !$exportResult.length ||
+        !$toggleColumnsBtn.length ||
+        !$columnCheckboxes.length
     ) {
         return;
     }
@@ -24,6 +28,30 @@ function initializeCustomerExport() {
 
     let pollInterval = null;
     let isPolling = false;
+
+    function updateToggleButton() {
+        const total = $columnCheckboxes.length;
+        const selected = $columnCheckboxes.filter(':checked').length;
+        if (selected === total) {
+            $toggleColumnsBtn.text('Unselect All');
+        } else {
+            $toggleColumnsBtn.text('Select All');
+        }
+    }
+
+    function setAllColumns(checked) {
+        $columnCheckboxes.prop('checked', checked);
+        updateToggleButton();
+    }
+
+    $toggleColumnsBtn.on('click', function () {
+        const allSelected = $columnCheckboxes.length === $columnCheckboxes.filter(':checked').length;
+        setAllColumns(!allSelected);
+    });
+
+    $columnCheckboxes.on('change', updateToggleButton);
+
+    setAllColumns(false);
 
     function clearPolling() {
         if (pollInterval) {
@@ -124,6 +152,14 @@ function initializeCustomerExport() {
                 return $(this).val();
             })
             .get();
+
+        if (columns.length === 0) {
+            $exportResult.html(
+                `<div class="alert alert-danger">Please select at least one column before exporting.</div>`
+            );
+            $exportBtn.prop('disabled', false);
+            return;
+        }
 
         let payload = {
             type: type,

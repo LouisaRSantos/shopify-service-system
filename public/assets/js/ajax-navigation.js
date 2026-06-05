@@ -9,8 +9,14 @@
     }
 
     function updateActiveNavigation(url) {
+        const parsedUrl = new URL(url, window.location.origin);
+        const currentPathname = parsedUrl.pathname;
+        
         $(linkSelector).each(function () {
-            $(this).toggleClass('active', this.href === url);
+            const linkUrl = new URL(this.href, window.location.origin);
+            const linkPathname = linkUrl.pathname;
+            const isActive = linkPathname === currentPathname;
+            $(this).toggleClass('active', isActive);
         });
     }
 
