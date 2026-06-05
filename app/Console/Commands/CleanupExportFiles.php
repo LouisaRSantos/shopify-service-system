@@ -31,7 +31,7 @@ class CleanupExportFiles extends Command
             return Command::SUCCESS;
         }
 
-        $retentionMinutes = 3; // TESTING CHANGE TO 7 DAYS AFTER
+        $retentionDays = 7;
         $files = File::files($exportPath);
         $deletedCount = 0;
 
@@ -42,7 +42,7 @@ class CleanupExportFiles extends Command
             $lastModified = Carbon::createFromTimestamp(
                 $file->getMTime()
             );
-            if ($lastModified->diffInMinutes(now()) < $retentionMinutes) {
+            if ($lastModified->diffInDays(now()) < $retentionDays) {
                 continue;
             }
             File::delete($file->getPathname());
