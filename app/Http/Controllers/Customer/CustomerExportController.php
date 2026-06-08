@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use App\Models\ExportLog;
+use Illuminate\Support\Carbon;
 
 
 class CustomerExportController extends Controller
@@ -20,6 +22,9 @@ class CustomerExportController extends Controller
 
     public function start(Request $request)
     {
+        $log = $this->logExportStart($request->type, $request->all());
+        session(['export_log_id' => $log->id]);
+
         session([
             'export_type' => $request->type,
             'export_columns' => $request->columns ?? [],
@@ -27,16 +32,12 @@ class CustomerExportController extends Controller
 
         $shopify = app(\App\Services\ShopifyService::class);
 
-        /*
-        |--------------------------------------------------------------------------
-        | 1. EXPORT BY IDS (REST)
-        |--------------------------------------------------------------------------
-        */
+        //1. EXPORT BY IDS
+
         if ($request->type === "ids") {
-
             $idsRaw = $request->ids ?? '';
-
             if (empty($idsRaw)) {
+                $this->logExportFail("Missing customer IDs");
                 return response()->json([
                     "status" => "error",
                     "message" => "Customer IDs are required"
@@ -44,8 +45,8 @@ class CustomerExportController extends Controller
             }
 
             $ids = array_filter(array_map('trim', explode(',', $idsRaw)));
-
             if (empty($ids)) {
+                $this->logExportFail("Invalid ID format");
                 return response()->json([
                     "status" => "error",
                     "message" => "Invalid IDs format"
@@ -53,8 +54,8 @@ class CustomerExportController extends Controller
             }
 
             $result = $shopify->getCustomersByIds($ids);
-
             if ($result['status'] !== 200) {
+                $this->logExportFail("Shopify API failed (getCustomersByIds)");
                 return response()->json([
                     "status" => "error",
                     "message" => "Failed to fetch customers by IDs",
@@ -63,8 +64,8 @@ class CustomerExportController extends Controller
             }
 
             $customersRaw = $result['json']['customers'] ?? [];
-
             if (empty($customersRaw)) {
+                $this->logExportFail("No customers returned from Shopify");
                 return response()->json([
                     "status" => "error",
                     "message" => "No customers found for given IDs"
@@ -72,18 +73,19 @@ class CustomerExportController extends Controller
             }
 
             $customers = array_map([$this, 'normalizeCustomer'], $customersRaw);
-
             if (empty($customers)) {
+                $this->logExportFail("Normalization resulted in empty dataset");
                 return response()->json([
                     "status" => "error",
                     "message" => "No customers found for given IDs"
                 ]);
             }
-
             session([
                 'export_customers' => $customers,
                 'export_mode' => 'ids'
             ]);
+
+            $this->logExportSuccess(null, count($customers));
 
             return response()->json([
                 "status" => "success",
@@ -91,16 +93,11 @@ class CustomerExportController extends Controller
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 2. EXPORT BY EMAIL (REST SEARCH)
-        |--------------------------------------------------------------------------
-        */
+        //2. EXPORT BY EMAIL
         if ($request->type === "email") {
-
             $email = trim($request->email ?? '');
-
             if (empty($email)) {
+                $this->logExportFail("Missing email input");
                 return response()->json([
                     "status" => "error",
                     "message" => "Email is required"
@@ -108,8 +105,8 @@ class CustomerExportController extends Controller
             }
 
             $result = $shopify->searchCustomerByEmail($email);
-
             if ($result['status'] !== 200) {
+                $this->logExportFail("Shopify API failed (searchCustomerByEmail)");
                 return response()->json([
                     "status" => "error",
                     "message" => "Failed to search customer by email",
@@ -118,8 +115,8 @@ class CustomerExportController extends Controller
             }
 
             $customersRaw = $result['json']['customers'] ?? [];
-
             if (empty($customersRaw)) {
+                $this->logExportFail("No customer found in Shopify response");
                 return response()->json([
                     "status" => "error",
                     "message" => "No customer found for this email"
@@ -127,66 +124,56 @@ class CustomerExportController extends Controller
             }
 
             $customers = array_map([$this, 'normalizeCustomer'], $customersRaw);
-
-            // OPTIONAL strict match filter (recommended)
             $customers = array_values(array_filter($customers, function ($c) use ($email) {
                 return isset($c['email']) && strtolower($c['email']) === strtolower($email);
             }));
 
             if (empty($customers)) {
+                $this->logExportFail("Email filter removed all results");
                 return response()->json([
                     "status" => "error",
                     "message" => "No customer found for this email"
                 ]);
             }
-
             session([
                 'export_customers' => $customers,
                 'export_mode' => 'email'
             ]);
-
+            $this->logExportSuccess(null, count($customers));
             return response()->json([
                 "status" => "success",
                 "message" => "Customer fetched by email. Generating export..."
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 3. DEFAULT (BULK GRAPHQL EXPORT)
-        |--------------------------------------------------------------------------
-        */
+        //3. BULK GRAPHQL EXPORT
         $queryFilter = "";
-
         if ($request->type === "state") {
-
             $state = trim($request->state ?? '');
-
             if (empty($state)) {
+                $this->logExportFail("Missing state filter");
                 return response()->json([
                     "status" => "error",
                     "message" => "State is required (enabled/invited)"
                 ]);
             }
 
-            // optional safety whitelist
             $allowed = ['enabled', 'invited', 'disabled'];
-
             if (!in_array($state, $allowed)) {
+                $this->logExportFail("Invalid state filter: {$state}");
                 return response()->json([
                     "status" => "error",
                     "message" => "Invalid state value"
                 ]);
             }
-
             $queryFilter = "state:{$state}";
         }
 
         $result = $shopify->startCustomerBulkExport($queryFilter);
-
         $bulk = $result['json']['data']['bulkOperationRunQuery'] ?? null;
 
         if (!$bulk) {
+            $this->logExportFail("Invalid Shopify bulk response structure");
             return response()->json([
                 "status" => "error",
                 "message" => "Invalid Shopify response"
@@ -194,13 +181,13 @@ class CustomerExportController extends Controller
         }
 
         if (!empty($bulk['userErrors'])) {
+            $this->logExportFail("Shopify bulk user errors: " . json_encode($bulk['userErrors']));
             return response()->json([
                 "status" => "error",
                 "message" => "Bulk export failed",
                 "errors" => $bulk['userErrors']
             ]);
         }
-
         return response()->json([
             "status" => "success",
             "message" => "Bulk export started. Please wait..."
@@ -210,15 +197,13 @@ class CustomerExportController extends Controller
     public function status()
     {
         $mode = session('export_mode');
+        $logId = session('export_log_id');
 
-        // =========================
-        // IDS MODE
-        // =========================
+        //IDS / EMAIL MODE
         if (in_array($mode, ['ids', 'email'])) {
-
             $customers = session('export_customers', []);
-
             if (empty($customers)) {
+                $this->logExportFail("Status check failed: empty session customers");
                 return response()->json([
                     "status" => "error",
                     "message" => "No cached customers found"
@@ -226,46 +211,47 @@ class CustomerExportController extends Controller
             }
 
             $fileName = $this->generateExcel($customers);
-
+            $this->logExportSuccess($fileName, count($customers));
             session()->forget(['export_customers', 'export_mode']);
-
             return response()->json([
                 "status" => "COMPLETED",
                 "download" => "/customers/export/download?file=" . urlencode($fileName)
             ]);
         }
 
+        //BULK MODE (GRAPHQL)
         $shopify = app(\App\Services\ShopifyService::class);
-
         $result = $shopify->getBulkExportStatus();
-
         $op = $result['json']['data']['currentBulkOperation'] ?? null;
-
         if (!$op) {
+            $this->logExportFail("Bulk status: no currentBulkOperation");
             return response()->json([
                 "status" => "error",
                 "message" => "No bulk operation"
             ]);
         }
 
+        //Still processing
         if ($op['status'] !== "COMPLETED") {
+
             return response()->json([
                 "status" => $op['status']
             ]);
         }
 
-        $url = $op['url'] ?? null;
-
-        if (!$url) {
+        //Already completed but no URL
+        if (empty($op['url'])) {
+            $this->logExportFail("Bulk completed but missing URL");
             return response()->json([
                 "status" => "error",
                 "message" => "No export URL"
             ]);
         }
 
-        $jsonl = file_get_contents($url);
-
+        //Download JSONL
+        $jsonl = file_get_contents($op['url']);
         if (!$jsonl) {
+            $this->logExportFail("Failed to download Shopify bulk JSONL");
             return response()->json([
                 "status" => "error",
                 "message" => "Failed downloading export"
@@ -273,7 +259,6 @@ class CustomerExportController extends Controller
         }
 
         $lines = explode("\n", trim($jsonl));
-
         $customers = [];
 
         foreach ($lines as $line) {
@@ -283,8 +268,14 @@ class CustomerExportController extends Controller
             }
         }
 
+        //Generate Excel
         $fileName = $this->generateExcel($customers);
 
+        //FINAL SUCCESS LOG
+        $this->logExportSuccess($fileName, count($customers));
+
+        //Clear session so polling will NOT re-trigger export again
+        session()->forget(['export_mode']);
         return response()->json([
             "status" => "COMPLETED",
             "download" => "/customers/export/download?file=" . urlencode($fileName)
@@ -294,20 +285,16 @@ class CustomerExportController extends Controller
     public function download(Request $request)
     {
         $file = $request->file;
-
         $path = storage_path("app/exports/" . $file);
-
         if (!file_exists($path)) {
             abort(404);
         }
-
         return response()->download($path);
     }
 
     private function generateExcel($customers)
     {
         $columns = session('export_columns', []);
-
         $columnMap = [
             "id" => "ID",
             "email" => "Email",
@@ -320,12 +307,9 @@ class CustomerExportController extends Controller
             "created_at" => "Created At",
             "updated_at" => "Updated At",
         ];
-
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-
         $colIndex = 1;
-
         foreach ($columns as $col) {
             $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex) . 1;
             $sheet->setCellValue($cell, $columnMap[$col] ?? $col);
@@ -333,39 +317,28 @@ class CustomerExportController extends Controller
         }
 
         $row = 2;
-
         foreach ($customers as $customer) {
-
             $colIndex = 1;
-
             foreach ($columns as $col) {
-
                 switch ($col) {
-
                     case 'first_name':
                         $value = $customer['firstName'] ?? '';
                         break;
-
                     case 'last_name':
                         $value = $customer['lastName'] ?? '';
                         break;
-
                     case 'created_at':
                         $value = $customer['createdAt'] ?? '';
                         break;
-
                     case 'updated_at':
                         $value = $customer['updatedAt'] ?? '';
                         break;
-
                     case 'orders_count':
                         $value = $customer['numberOfOrders'] ?? '';
                         break;
-
                     case 'total_spent':
                         $value = $customer['amountSpent']['amount'] ?? '';
                         break;
-
                     default:
                         $value = $customer[$col] ?? '';
                         break;
@@ -375,23 +348,18 @@ class CustomerExportController extends Controller
                     $value = str_replace('gid://shopify/Customer/', '', $value);
                 }
 
-
                 $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex) . $row;
                 $sheet->setCellValue($cell, $value);
                 $colIndex++;
             }
-
             $row++;
         }
 
         $fileName = "customers_export_" . time() . ".xlsx";
         $path = storage_path("app/exports/" . $fileName);
-
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save($path);
-
         session(['export_file' => $fileName]);
-
         return $fileName;
     }
 
@@ -411,6 +379,42 @@ class CustomerExportController extends Controller
             'createdAt' => $c['created_at'] ?? '',
             'updatedAt' => $c['updated_at'] ?? '',
         ];
+    }
+
+    private function logExportStart($type, $payload)
+    {
+        return ExportLog::create([
+            'user_id' => session('web_user_id'),
+            'export_type' => $type,
+            'status' => 'started',
+            'payload' => $payload,
+            'started_at' => Carbon::now(),
+        ]);
+    }
+
+    private function logExportSuccess($fileName, $rowsCount = null)
+    {
+        $logId = session('export_log_id');
+        if (!$logId) return;
+        ExportLog::where('id', $logId)->update([
+            'status' => 'completed',
+            'file_name' => $fileName,
+            'rows_count' => $rowsCount,
+            'completed_at' => Carbon::now(),
+        ]);
+    }
+
+    private function logExportFail($message)
+    {
+        $logId = session('export_log_id');
+        if (!$logId) return;
+        ExportLog::where('id', $logId)->update([
+            'status' => 'failed',
+            'response_payload' => [
+                'message' => $message
+            ],
+            'completed_at' => Carbon::now(),
+        ]);
     }
 
 }

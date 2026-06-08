@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WebUser extends Authenticatable
 {
@@ -18,4 +19,14 @@ class WebUser extends Authenticatable
     protected $hidden = [
         'password',
     ];
+
+    public function exportLogs(): HasMany
+    {
+        return $this->hasMany(ExportLog::class, 'user_id');
+    }
+
+    public function customerActivityLogs(): HasMany
+    {
+        return $this->hasMany(CustomerActivityLog::class, 'user_id');
+    }
 }

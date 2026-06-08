@@ -14,7 +14,6 @@ class AuthController extends Controller
         if (session()->has('web_user_id')) {
             return redirect('/');
         }
-
         return view('auth.login');
     }
 
@@ -36,12 +35,10 @@ class AuthController extends Controller
         if (!Hash::check($request->password, $user->password)) {
             return back()->with('error', 'Invalid password');
         }
-
         // store session
         Session::put('web_user_id', $user->id);
         Session::put('web_username', $user->username);
         Session::put('web_full_name', $user->full_name);
-
         return redirect('/');
     }
 
