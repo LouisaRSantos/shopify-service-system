@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\ShopifyService;
+use App\Models\CustomerActivityLog;
+use Illuminate\Support\Carbon;
 
 class CustomerCreateController extends Controller
 {
@@ -26,7 +28,16 @@ class CustomerCreateController extends Controller
 
     public function store(Request $request)
     {
+        $log = $this->logActivityStart(
+            'manual',
+            $request->all()
+        );
+
         if (!$request->ajax()) {
+            $this->logActivityFail(
+                $log->id,
+                'Invalid request type'
+            );
             return response()->json([
                 "status" => "error",
                 "message" => "Invalid request"
@@ -38,6 +49,11 @@ class CustomerCreateController extends Controller
         $email = $request->input('email');
 
         if (empty($email)) {
+            $this->logActivityFail(
+                $log->id,
+                'Email is required'
+            );
+
             return response()->json([
                 "status" => "error",
                 "message" => "Email is required"
@@ -62,6 +78,10 @@ class CustomerCreateController extends Controller
         }
 
         if (!$allowed) {
+            $this->logActivityFail(
+                $log->id,
+                'Email must end with @bounty.com.ph or @bvapcloud.com'
+            );
             return response()->json([
                 "status" => "error",
                 "message" => "Email must end with @bounty.com.ph or @bvapcloud.com"
@@ -98,6 +118,11 @@ class CustomerCreateController extends Controller
                 }
             }
 
+            $this->logActivityFail(
+                $log->id,
+                $errorMessage
+            );
+
             return response()->json([
                 "status" => "error",
                 "message" => $errorMessage
@@ -108,6 +133,10 @@ class CustomerCreateController extends Controller
         // VALIDATION: SUCCESS CHECK
         // -----------------------------
         if (!isset($customer['customer']['id'])) {
+            $this->logActivityFail(
+                $log->id,
+                "Failed to create customer"
+            );
             return response()->json([
                 "status" => "error",
                 "message" => "Failed to create customer"
@@ -120,9 +149,47 @@ class CustomerCreateController extends Controller
         $customerId = $customer['customer']['id'];
         $this->shopify->sendInvite($customerId);
 
+        $this->logActivitySuccess(
+            $log->id,
+            $customer,
+            1
+        );
+
         return response()->json([
             "status" => "success",
             "message" => "Customer created and activation email sent"
+        ]);
+    }
+
+    private function logActivityStart($type, $payload)
+    {
+        return CustomerActivityLog::create([
+            'user_id' => session('web_user_id'),
+            'activity_type' => $type,
+            'status' => 'started',
+            'payload' => $payload,
+            'started_at' => Carbon::now(),
+        ]);
+    }
+
+    private function logActivitySuccess($logId, $response = [], $count = 1)
+    {
+        CustomerActivityLog::where('id', $logId)->update([
+            'status' => 'completed',
+            'response_payload' => $response,
+            'count_added' => $count,
+            'completed_at' => Carbon::now(),
+        ]);
+    }
+
+    private function logActivityFail($logId, $message)
+    {
+        CustomerActivityLog::where('id', $logId)->update([
+            'status' => 'failed',
+            'response_payload' => [
+                'message' => $message
+            ],
+            'completed_at' => Carbon::now(),
         ]);
     }
 }

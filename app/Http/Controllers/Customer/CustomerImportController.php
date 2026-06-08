@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\ShopifyService;
 use Illuminate\Support\Facades\Storage;
+use App\Models\CustomerActivityLog;
+use Illuminate\Support\Carbon;
 
 class CustomerImportController extends Controller
 {
@@ -50,6 +52,14 @@ class CustomerImportController extends Controller
         ]);
 
         $file = $request->file('file');
+        
+        $log = $this->logActivityStart(
+            'import',
+            [
+                'file_name' => $file->getClientOriginalName()
+            ]
+        );
+
         $path = $file->getRealPath();
 
         $rows = array_map('str_getcsv', file($path));
@@ -82,9 +92,49 @@ class CustomerImportController extends Controller
             }
         }
 
+        $this->logActivitySuccess(
+            $log->id,
+            [
+                'failed' => $failed
+            ],
+            $created
+        );
+
         return response()->json([
             'created' => $created,
             'failed' => $failed
+        ]);
+    }
+
+    private function logActivityStart($type, $payload)
+    {
+        return CustomerActivityLog::create([
+            'user_id' => session('web_user_id'),
+            'activity_type' => $type,
+            'status' => 'started',
+            'payload' => $payload,
+            'started_at' => Carbon::now(),
+        ]);
+    }
+
+    private function logActivitySuccess($logId, $response = [], $count = 1)
+    {
+        CustomerActivityLog::where('id', $logId)->update([
+            'status' => 'completed',
+            'response_payload' => $response,
+            'count_added' => $count,
+            'completed_at' => Carbon::now(),
+        ]);
+    }
+
+    private function logActivityFail($logId, $message)
+    {
+        CustomerActivityLog::where('id', $logId)->update([
+            'status' => 'failed',
+            'response_payload' => [
+                'message' => $message
+            ],
+            'completed_at' => Carbon::now(),
         ]);
     }
 }
