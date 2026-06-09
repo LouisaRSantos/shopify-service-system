@@ -45,6 +45,31 @@
             </a>
         </li>
 
+        <li class="nav-item nav-category">
+            Administration
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link ajax-link" href="/logs/customer-activity">
+                <i class="icon-marquee menu-icon"></i>
+                <span class="menu-title">Customer Activity</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link ajax-link" href="/logs/export-history">
+                <i class="icon-download menu-icon"></i>
+                <span class="menu-title">Export History</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link ajax-link" href="/logs/system-logs">
+                <i class="icon-archive menu-icon"></i>
+                <span class="menu-title">System Logs</span>
+            </a>
+        </li>
+
     </ul>
 
 </nav>

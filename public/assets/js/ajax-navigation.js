@@ -76,14 +76,25 @@
             },
             success: function (html) {
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
+                const doc = parser.parseFromString(html, 'text/html'); 
                 const $nextContent = findContentElement(doc);
                 if (!$nextContent.length) {
                     throw new Error('AJAX content container not found in response.');
                 }
+                window.__logTableConfig = [];
 
                 $contentElement.html($nextContent.html());
                 executeInlineScripts($nextContent);
+
+                // re-init dashboard if dashboard is loaded
+                const isDashboard = $nextContent.find('#dashboard-recent-customers-body').length > 0;
+
+                if (isDashboard && typeof window.initDashboard === 'function') {
+                    if (typeof window.bootDashboard === 'function') {
+                        window.bootDashboard();
+                    }
+                }
+
                 const hasExport =
                     $nextContent.find('#exportType').length ||
                     $nextContent.find('#exportBtn').length;
@@ -93,6 +104,10 @@
                     hasExport
                 ) {
                     initializeCustomerExport();
+                }
+
+                if (typeof initLogTables === 'function') {
+                    initLogTables();
                 }
 
                 const pageTitle = $(doc).find('title').text();

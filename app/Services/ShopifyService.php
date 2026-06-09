@@ -218,7 +218,43 @@ class ShopifyService
         ];
     }
 
+    public function countCustomers(string $query = '')
+    {
+        $url = "{$this->shopUrl}/admin/api/{$this->apiVersion}/customers/count.json";
+        $params = [];
+        if ($query !== '') {
+            $params['query'] = $query;
+        }
 
+        $response = Http::withHeaders([
+            'X-Shopify-Access-Token' => $this->accessToken,
+            'Content-Type' => 'application/json',
+        ])->get($url, $params);
+
+        return [
+            'url' => $url,
+            'status' => $response->status(),
+            'body' => $response->body(),
+            'json' => $response->json(),
+        ];
+    }
+
+    public function getCustomers(array $params = [])
+    {
+        $url = "{$this->shopUrl}/admin/api/{$this->apiVersion}/customers.json";
+
+        $response = Http::withHeaders([
+            'X-Shopify-Access-Token' => $this->accessToken,
+            'Content-Type' => 'application/json',
+        ])->get($url, $params);
+
+        return [
+            'url' => $url,
+            'status' => $response->status(),
+            'body' => $response->body(),
+            'json' => $response->json(),
+        ];
+    }
 
     public function testConnection()
     {

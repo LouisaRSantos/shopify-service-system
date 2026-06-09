@@ -61,6 +61,7 @@
 
     <script src="{{ asset('assets/js/ajax-navigation.js') }}"></script>
     <script src="{{ asset('assets/js/customer-export.js') }}"></script>
+    <script src="{{ asset('assets/js/logs.js') }}"></script>
 
     @stack('scripts')
 </body>
