@@ -218,6 +218,75 @@ class ShopifyService
         ];
     }
 
+    public function searchCustomers(string $query, int $limit = 250)
+    {
+        $url = "{$this->shopUrl}/admin/api/{$this->apiVersion}/customers/search.json";
+
+        $response = Http::withHeaders([
+            'X-Shopify-Access-Token' => $this->accessToken,
+            'Content-Type' => 'application/json',
+        ])->get($url, [
+            'query' => $query,
+            'limit' => $limit,
+        ]);
+
+        return [
+            'url' => $url,
+            'status' => $response->status(),
+            'body' => $response->body(),
+            'json' => $response->json(),
+            'headers' => $response->headers(),
+        ];
+    }
+
+    public function searchCustomersByUrl(string $url)
+    {
+        $response = Http::withHeaders([
+            'X-Shopify-Access-Token' => $this->accessToken,
+            'Content-Type' => 'application/json',
+        ])->get($url);
+
+        return [
+            'url' => $url,
+            'status' => $response->status(),
+            'body' => $response->body(),
+            'json' => $response->json(),
+            'headers' => $response->headers(),
+        ];
+    }
+
+    public function countCustomersByState(string $state)
+    {
+        $total = 0;
+
+        $result = $this->searchCustomers("state:{$state}");
+
+        while (true) {
+
+            $customers = $result['json']['customers'] ?? [];
+
+            $total += count($customers);
+
+            $linkHeader = $result['headers']['link'][0] ?? null;
+
+            if (!$linkHeader || strpos($linkHeader, 'rel="next"') === false) {
+                break;
+            }
+
+            preg_match('/<(.*?)>;\s*rel="next"/', $linkHeader, $matches);
+
+            if (empty($matches[1])) {
+                break;
+            }
+
+            $nextUrl = $matches[1];
+
+            $result = $this->searchCustomersByUrl($nextUrl);
+        }
+
+        return $total;
+    }
+
     public function countCustomers(string $query = '')
     {
         $url = "{$this->shopUrl}/admin/api/{$this->apiVersion}/customers/count.json";

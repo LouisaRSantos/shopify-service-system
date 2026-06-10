@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\ShopifyService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -12,9 +13,26 @@ class DashboardController extends Controller
     {
         $weekAgo = Carbon::now()->subWeek()->toIso8601String();
 
-        $customerCount = $shopify->countCustomers();
-        $invitedCount = $shopify->countCustomers('state:invited');
-        $enabledCount = $shopify->countCustomers('state:enabled');
+        $customerCount = Cache::remember(
+            'dashboard_customer_count',
+            now()->addMinutes(10),
+            fn() => data_get(
+                $shopify->countCustomers(),
+                'json.count',
+                0
+            )
+        );
+        $invitedCount = Cache::remember(
+            'dashboard_invited_count',
+            now()->addMinutes(5),
+            fn() => $shopify->countCustomersByState('invited')
+        );
+
+        $enabledCount = Cache::remember(
+            'dashboard_enabled_count',
+            now()->addMinutes(5),
+            fn() => $shopify->countCustomersByState('enabled')
+        );
         $recentCustomers = $shopify->getCustomers([
             'limit' => 10,
             'created_at_min' => Carbon::now()->subWeek()->toDateString(),
@@ -24,9 +42,9 @@ class DashboardController extends Controller
 
         return response()->json([
             'counts' => [
-                'customers' => data_get($customerCount, 'json.count', 0),
-                'invited' => data_get($invitedCount, 'json.count', 0),
-                'enabled' => data_get($enabledCount, 'json.count', 0),
+                'customers' => $customerCount,
+                'invited' => $invitedCount,
+                'enabled' => $enabledCount,
             ],
             'recent_customers' => collect(data_get($recentCustomers, 'json.customers', []))->map(function ($customer) {
                 return [
