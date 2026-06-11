@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Customer\CustomerCreateController;
 use App\Http\Controllers\Customer\CustomerImportController;
 use App\Http\Controllers\Customer\CustomerExportController;
+use App\Http\Controllers\Configuration\ConfigurationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Logs\LogsController;
 
@@ -57,6 +58,15 @@ Route::middleware(['auth.web', 'no.cache'])->group(function () {
 
         Route::get('/logs/system-logs', [LogsController::class, 'systemLogsPage']);
         Route::get('/api/logs/system-logs', [LogsController::class, 'systemLogsData']);
+
+        Route::get('/api/configuration', [ConfigurationController::class, 'index']);
+        Route::post('/configuration/update', [ConfigurationController::class, 'update']);
+        Route::get('/configuration', function () {
+            if (request()->ajax()) {
+                return view('configuration.content');
+            }
+            return view('configuration.index');
+        });
     });
 
     

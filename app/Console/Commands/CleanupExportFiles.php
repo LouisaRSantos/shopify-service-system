@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Carbon\Carbon;
 use App\Models\SystemLog;
+use App\Services\SystemConfigService;
 
 class CleanupExportFiles extends Command
 {
@@ -46,7 +47,8 @@ class CleanupExportFiles extends Command
                 return Command::SUCCESS;
             }
 
-            $retentionDays = 7;
+            $retentionDays = app(SystemConfigService::class)
+                ->getCached('export_retention_days', 7);
             $files = File::files($exportPath);
             $deletedCount = 0;
 

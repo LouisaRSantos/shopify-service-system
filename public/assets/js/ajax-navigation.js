@@ -201,7 +201,7 @@
                 window.__logTableConfig = [];
 
                 $contentElement.html($nextContent.html());
-                executeInlineScripts($nextContent);
+                executeInlineScripts($(doc));
 
                 // re-init dashboard if dashboard is loaded
                 const isDashboard = $nextContent.find('#dashboard-recent-customers-body').length > 0;

@@ -74,6 +74,17 @@
                     <span class="menu-title">System Logs</span>
                 </a>
             </li>
+
+            <li class="nav-item nav-category">
+                System Settings
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link ajax-link" href="/configuration">
+                    <i class="icon-monitor menu-icon"></i>
+                    <span class="menu-title">Configuration</span>
+                </a>
+            </li>
         @endif
 
     </ul>
