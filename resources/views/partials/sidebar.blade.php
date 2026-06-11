@@ -1,3 +1,7 @@
+@php
+    $isAdmin = session('web_user_type') === 'admin';
+@endphp
+
 <nav class="sidebar sidebar-offcanvas" id="sidebar">
 
     <ul class="nav">
@@ -34,41 +38,43 @@
             </a>
         </li>
 
-        <li class="nav-item nav-category">
-            Bounty Fresh Market
-        </li>
+        @if($isAdmin)
+            <li class="nav-item nav-category">
+                Bounty Fresh Market
+            </li>
 
-        <li class="nav-item">
-            <a class="nav-link ajax-link" href="/">
-                <i class="icon-clock menu-icon"></i>
-                <span class="menu-title">Marketing Scheduler</span>
-            </a>
-        </li>
+            <li class="nav-item">
+                <a class="nav-link ajax-link" href="/">
+                    <i class="icon-clock menu-icon"></i>
+                    <span class="menu-title">Marketing Scheduler</span>
+                </a>
+            </li>
 
-        <li class="nav-item nav-category">
-            Administration
-        </li>
+            <li class="nav-item nav-category">
+                Administration
+            </li>
 
-        <li class="nav-item">
-            <a class="nav-link ajax-link" href="/logs/customer-activity">
-                <i class="icon-marquee menu-icon"></i>
-                <span class="menu-title">Customer Activity</span>
-            </a>
-        </li>
+            <li class="nav-item">
+                <a class="nav-link ajax-link" href="/logs/customer-activity">
+                    <i class="icon-marquee menu-icon"></i>
+                    <span class="menu-title">Customer Activity</span>
+                </a>
+            </li>
 
-        <li class="nav-item">
-            <a class="nav-link ajax-link" href="/logs/export-history">
-                <i class="icon-download menu-icon"></i>
-                <span class="menu-title">Export History</span>
-            </a>
-        </li>
+            <li class="nav-item">
+                <a class="nav-link ajax-link" href="/logs/export-history">
+                    <i class="icon-download menu-icon"></i>
+                    <span class="menu-title">Export History</span>
+                </a>
+            </li>
 
-        <li class="nav-item">
-            <a class="nav-link ajax-link" href="/logs/system-logs">
-                <i class="icon-archive menu-icon"></i>
-                <span class="menu-title">System Logs</span>
-            </a>
-        </li>
+            <li class="nav-item">
+                <a class="nav-link ajax-link" href="/logs/system-logs">
+                    <i class="icon-archive menu-icon"></i>
+                    <span class="menu-title">System Logs</span>
+                </a>
+            </li>
+        @endif
 
     </ul>
 

@@ -18,6 +18,9 @@ Route::get('/logout', [AuthController::class, 'logout'])
     ->name('logout');
 
 Route::middleware(['auth.web', 'no.cache'])->group(function () {
+    Route::get('/test-admin', function () {
+        return 'Admin Access Granted';
+    })->middleware('admin.only');
     Route::get('/', function () {
         if (request()->ajax()) {
             return view('dashboard.content');
@@ -43,15 +46,19 @@ Route::middleware(['auth.web', 'no.cache'])->group(function () {
     Route::get('/customers/export/status', [CustomerExportController::class, 'status']);
     Route::get('/customers/export/download', [CustomerExportController::class, 'download']);
 
-    Route::get('/logs/customer-activity', [LogsController::class, 'customerActivityPage']);
-    Route::get('/api/logs/customer-activity', [LogsController::class, 'customerActivityData']);
-
-    Route::get('/logs/export-history', [LogsController::class, 'exportHistoryPage']);
-    Route::get('/api/logs/export-history', [LogsController::class, 'exportHistoryData']);
-
-    Route::get('/logs/system-logs', [LogsController::class, 'systemLogsPage']);
-    Route::get('/api/logs/system-logs', [LogsController::class, 'systemLogsData']);
-
     Route::get('/api/dashboard/summary', [DashboardController::class, 'summary']);
+
+    Route::middleware('admin.only')->group(function() {
+        Route::get('/logs/customer-activity', [LogsController::class, 'customerActivityPage']);
+        Route::get('/api/logs/customer-activity', [LogsController::class, 'customerActivityData']);
+
+        Route::get('/logs/export-history', [LogsController::class, 'exportHistoryPage']);
+        Route::get('/api/logs/export-history', [LogsController::class, 'exportHistoryData']);
+
+        Route::get('/logs/system-logs', [LogsController::class, 'systemLogsPage']);
+        Route::get('/api/logs/system-logs', [LogsController::class, 'systemLogsData']);
+    });
+
+    
 });
 

@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.web' => \App\Http\Middleware\WebAuth::class,
             'no.cache' => \App\Http\Middleware\NoCache::class,
+            'admin.only' => \App\Http\Middleware\AdminOnly::class,
         ]);
 
     })

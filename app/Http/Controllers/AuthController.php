@@ -39,6 +39,8 @@ class AuthController extends Controller
         Session::put('web_user_id', $user->id);
         Session::put('web_username', $user->username);
         Session::put('web_full_name', $user->full_name);
+        Session::put('web_user_type', $user->user_type);
+
         return redirect('/');
     }
 
