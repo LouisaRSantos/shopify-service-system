@@ -60,6 +60,47 @@ function initializeCustomerExport() {
         }
     }
 
+    function renderExportStatus(message, detail = '', variant = 'info', showSpinner = true) {
+        const spinner = showSpinner
+            ? `<div class="spinner-border spinner-border-sm me-3" role="status" aria-hidden="true"></div>`
+            : '';
+        const detailHtml = detail ? `<div class="small text-muted mt-1">${detail}</div>` : '';
+
+        $exportResult.html(`
+            <div class="alert alert-${variant} d-flex align-items-start">
+                ${spinner}
+                <div>
+                    <div class="fw-bold">${message}</div>
+                    ${detailHtml}
+                </div>
+            </div>
+            ${showSpinner ? `
+            <div class="progress mt-3">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+            </div>
+            ` : ''}
+        `);
+    }
+
+    function renderExportDownload(downloadUrl) {
+        $exportResult.html(`
+            <div class="card border-success shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+                        <div>
+                            <h5 class="card-title mb-1">Export ready</h5>
+                            <p class="card-text text-muted mb-2">Your Excel file has finished generating and is ready to download.</p>
+                            <a href="${downloadUrl}" class="btn btn-success">Download Excel</a>
+                        </div>
+                        <div class="text-md-end">
+                            <span class="badge bg-success">Completed</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+    }
+
     window.__customerExportCleanup = clearPolling;
 
     $exportType.on('change', function () {
@@ -96,15 +137,8 @@ function initializeCustomerExport() {
                 console.log('EXPORT STATUS:', data);
                 if (data.status === 'COMPLETED') {
                     clearPolling();
-                    $exportBtn.prop('disabled', false);
-                    $exportResult.html(`
-                        <div class="alert alert-success">
-                            Export ready!
-                            <a href="${data.download}" class="btn btn-sm btn-primary mt-2">
-                                Download Excel
-                            </a>
-                        </div>
-                    `);
+                    $exportBtn.prop('disabled', false).text('Start Export');
+                    renderExportDownload(data.download);
                     return;
                 }
 
@@ -113,14 +147,17 @@ function initializeCustomerExport() {
                     data.status === 'CANCELED'
                 ) {
                     clearPolling();
-                    $exportBtn.prop('disabled', false);
-                    $exportResult.html(`
-                        <div class="alert alert-danger">
-                            Export failed or canceled.
-                        </div>
-                    `);
+                    $exportBtn.prop('disabled', false).text('Start Export');
+                    renderExportStatus('Export failed', 'Please try again or contact support.', 'danger', false);
                     return;
                 }
+
+                renderExportStatus(
+                    'Export in progress',
+                    `Current status: ${data.status}. Please wait while the export completes.`,
+                    'info',
+                    true
+                );
             },
 
             error: function (xhr, status, error) {
@@ -190,10 +227,8 @@ function initializeCustomerExport() {
             payload.state = $('#exportState').val() || '';
         }
 
-        $exportBtn.prop('disabled', true);
-        $exportResult.html(
-            `<div class="alert alert-info">Starting export...</div>`
-        );
+        $exportBtn.prop('disabled', true).text('Exporting...');
+        renderExportStatus('Starting export', 'Preparing your export request. This may take a few moments.');
 
         $.ajax({
             url: '/customers/export/start',
