@@ -79,15 +79,26 @@
 
             <li class="nav-item nav-profile dropdown">
 
-                <a class="nav-link dropdown-toggle"
-                   href="#"
-                   data-bs-toggle="dropdown">
+                <a class="nav-link dropdown-toggle d-flex align-items-center"
+                    href="#"
+                    data-bs-toggle="dropdown">
 
-                    <img src="{{ asset('assets/images/faces/circle-user.png') }}"
-                         alt="profile" />
+                        <img src="{{ asset('assets/images/faces/circle-user.png') }}"
+                            alt="profile" />
+
+                        <span class="ms-2 d-none d-lg-inline">
+                            {{ session('web_full_name') }}
+                        </span>
+
                 </a>
 
                 <div class="dropdown-menu dropdown-menu-right navbar-dropdown">
+                    <div class="dropdown-item-text">
+                        <strong>{{ session('web_full_name') }}</strong><br>
+                        <small>{{ session('web_username') }}</small>
+                    </div>
+
+                    <div class="dropdown-divider"></div>
 
                     <!-- <a class="dropdown-item">
                         <i class="ti-settings text-primary"></i>
