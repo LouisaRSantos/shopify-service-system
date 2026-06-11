@@ -40,6 +40,123 @@
         }
     }
 
+    function getToastContainer() {
+        const containerId = 'globalToastContainer';
+        let container = document.getElementById(containerId);
+        if (!container) {
+            container = document.createElement('div');
+            container.id = containerId;
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '1080';
+            document.body.appendChild(container);
+        }
+        return container;
+    }
+
+    function showToast(message, type = 'success') {
+        const container = getToastContainer();
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-white border-0';
+        toastEl.role = 'alert';
+        toastEl.ariaLive = 'assertive';
+        toastEl.ariaAtomic = 'true';
+
+        const bgClass = type === 'error' ? 'bg-danger' : 'bg-success';
+        const icon = type === 'error' ? '⚠️' : '✔️';
+
+        toastEl.innerHTML = `
+            <div class="d-flex ${bgClass} text-white rounded-3 shadow-sm">
+                <div class="toast-body">
+                    <strong>${icon}</strong> ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+
+        container.appendChild(toastEl);
+        const toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 4000 });
+        toast.show();
+        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+
+    function initializeCustomerForms() {
+        const customerForm = document.getElementById('customerForm');
+        if (customerForm && customerForm.dataset.ajaxBound !== 'true') {
+            customerForm.dataset.ajaxBound = 'true';
+            const btn = document.getElementById('submitBtn');
+
+            customerForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerText = 'Processing...';
+                }
+
+                const formData = new FormData(customerForm);
+
+                try {
+                    const res = await fetch('/customers/store', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    const data = await res.json();
+                    showToast(data.message, data.status);
+
+                    if (data.status === 'success') {
+                        customerForm.reset();
+                    }
+                } catch (err) {
+                    showToast('Network error', 'error');
+                }
+
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Add Customer';
+                }
+            });
+        }
+
+        const importForm = document.getElementById('importForm');
+        if (importForm && importForm.dataset.ajaxBound !== 'true') {
+            importForm.dataset.ajaxBound = 'true';
+
+            importForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const formData = new FormData(importForm);
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+                fetch('/customers/import/process', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.created !== undefined) {
+                        showToast(`Import completed: ${data.created} created`, 'success');
+                    }
+                    if (data.failed && data.failed.length > 0) {
+                        showToast(`${data.failed.length} rows failed`, 'error');
+                        console.log('Failed rows:', data.failed);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showToast('Import failed', 'error');
+                });
+            });
+        }
+    }
+
     function executeInlineScripts(root) {
         $(root).find('script').each(function () {
             const $oldScript = $(this);
@@ -110,6 +227,8 @@
                     initLogTables();
                 }
 
+                initializeCustomerForms();
+
                 const pageTitle = $(doc).find('title').text();
 
                 if (pageTitle) {
@@ -163,5 +282,6 @@
             window.location.pathname
         );
         updateActiveNavigation(window.location.href);
+        initializeCustomerForms();
     });
 })();
