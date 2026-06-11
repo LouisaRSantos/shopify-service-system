@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\CustomerActivityLog;
 use App\Models\ExportLog;
 use App\Models\SystemLog;
+use App\Models\ApiUsageLog;
 
 class LogsController extends Controller
 {
@@ -33,6 +34,14 @@ class LogsController extends Controller
             return view('logs.system-logs.index');
         }
         return view('logs.system-logs.full');
+    }
+
+    public function apiUsagePage()
+    {
+        if (request()->ajax()) {
+            return view('logs.api-usage.index');
+        }
+        return view('logs.api-usage.full');
     }
 
     public function customerActivityData()
@@ -104,6 +113,32 @@ class LogsController extends Controller
                     'status' => $log->status,
                     'started_at' => $log->started_at,
                     'finished_at' => $log->finished_at,
+                ];
+            });
+    }
+
+    public function apiUsageData()
+    {
+        $request = request();
+        $cols = ['id','user_id','method','endpoint','action','response_status','created_at'];
+        $q = ApiUsageLog::query();
+        foreach ($cols as $col) {
+            if ($request->filled($col)) {
+                $q->where($col, 'like', '%'.$request->get($col).'%'); 
+            }
+        }
+
+        return $q->orderByDesc('id')
+            ->simplePaginate(20)
+            ->through(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'user_id' => $log->user_id,
+                    'method' => $log->method,
+                    'endpoint' => $log->endpoint,
+                    'action' => $log->action,
+                    'response_status' => $log->response_status,
+                    'created_at' => $log->created_at,
                 ];
             });
     }

@@ -59,6 +59,9 @@ Route::middleware(['auth.web', 'no.cache'])->group(function () {
         Route::get('/logs/system-logs', [LogsController::class, 'systemLogsPage']);
         Route::get('/api/logs/system-logs', [LogsController::class, 'systemLogsData']);
 
+        Route::get('/logs/api-usage', [LogsController::class, 'apiUsagePage']);
+        Route::get('/api/logs/api-usage', [LogsController::class, 'apiUsageData']);
+
         Route::get('/api/configuration', [ConfigurationController::class, 'index']);
         Route::post('/configuration/update', [ConfigurationController::class, 'update']);
         Route::get('/configuration', function () {

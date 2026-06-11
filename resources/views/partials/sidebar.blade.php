@@ -51,7 +51,7 @@
             </li>
 
             <li class="nav-item nav-category">
-                Administration
+                Administration Logs
             </li>
 
             <li class="nav-item">
@@ -72,6 +72,13 @@
                 <a class="nav-link ajax-link" href="/logs/system-logs">
                     <i class="icon-archive menu-icon"></i>
                     <span class="menu-title">System Logs</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link ajax-link" href="/logs/api-usage">
+                    <i class="icon-server menu-icon"></i>
+                    <span class="menu-title">API Usage Logs</span>
                 </a>
             </li>
 

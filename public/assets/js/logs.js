@@ -9,10 +9,15 @@
 
             columns.forEach(col => {
                 let val = row[col] ?? "-";
-                // format timestamp-like fields
-                if (val && (col.endsWith('_at') || col.endsWith('started_at') || col.endsWith('finished_at') ) ) {
+
+                if (typeof val === "object" && val !== null) {
+                    val = JSON.stringify(val);
+                }
+
+                if (val && (col.endsWith('_at') || col.endsWith('started_at') || col.endsWith('finished_at'))) {
                     try { val = new Date(val).toLocaleString(); } catch(e) {}
                 }
+
                 tr += `<td>${val}</td>`;
             });
 
