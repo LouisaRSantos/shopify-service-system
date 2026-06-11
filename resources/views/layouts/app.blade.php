@@ -6,7 +6,7 @@
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'Dashboard')</title>
+    <title>@yield('title', 'Bounty Services')</title>
 
     <!-- plugins:css -->
     <link rel="stylesheet" href="{{ asset('assets/vendors/feather/feather.css') }}">
@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
     
 
-    <link rel="shortcut icon" href="{{ asset('assets/images/favicon.png') }}" />
+    <link rel="shortcut icon" href="{{ asset('assets/images/logo/bounty-services-circle-no-bg.png') }}" />
 </head>
 
 <body>
